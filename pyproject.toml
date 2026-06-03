@@ -1,0 +1,75 @@
+[project]
+name = "lms-coursework"
+version = "0.1.0"
+description = "Курсовой проект: Интеграция LMS-платформы с Telegram-ботом"
+authors = [
+    {name = "Your Name", email = "you@example.com"}
+]
+requires-python = "^3.13"
+dependencies = [
+    "django>=6.0.5",
+    "djangorestframework>=3.15.2",
+    "psycopg2-binary>=2.9.10",
+    "python-dotenv>=1.0.1",
+    "pytelegrambotapi>=4.26.0",
+    "redis>=4.6.0",
+    "celery>=5.6.3",
+    "django-celery-beat>=2.7.0"
+]
+
+[tool.poetry]
+package-mode = false
+requires-plugins = {}
+
+[tool.poetry.group.dev.dependencies]
+coverage = "^7.6.1"
+django-stubs = "^5.1.1"
+djangorestframework-stubs = "^3.15.2"
+# Добавили инструменты линтинга и форматирования
+black = "^24.10.0"
+isort = "^5.13.2"
+mypy = "^1.13.0"
+flake8 = "^7.1.1"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+# Настройки Black под длину строки 120 символов
+[tool.black]
+line-length = 120
+target-version = ['py313']
+exclude = '''
+  /(
+      \.eggs
+
+    | \.git
+    | \.hg
+    | \.mypy_cache
+
+    | \.tox
+    | \.venv
+    | _build
+
+    | buck-out
+    | build
+    | dist
+    | migrations
+  )/
+'''
+
+# Настройки Isort для красивой группировки импортов
+[tool.isort]
+profile = "black"
+line_length = 120
+multi_line_output = 3
+skip = ["migrations", ".venv"]
+
+# Настройки Mypy для строгой статической типизации
+[tool.mypy]
+plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
+ignore_missing_imports = true
+exclude = ["migrations", ".venv"]
+
+[tool.django-stubs]
+django_settings_module = "config.settings"
