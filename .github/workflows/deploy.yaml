@@ -104,6 +104,7 @@ jobs:
             
             docker builder prune -f
             
-            docker compose down
+            # Принудительно очищаем старые зависшие диски СУБД на сервере
+            docker compose down -v
             docker compose up --build -d
             docker compose exec -T web python manage.py migrate
