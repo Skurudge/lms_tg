@@ -13,7 +13,8 @@ class RewardAndRelatedHabitValidator:
 
         if related_habit and reward:
             raise ValidationError(
-                "Нельзя одновременно выбирать связанную привычку и указывать вознаграждение. Выберите что-то одно [Валидаторы]."
+                "Нельзя одновременно выбирать связанную привычку и указывать вознаграждение. "
+                "Выберите что-то одно [Валидаторы]."
             )
 
 
@@ -26,7 +27,8 @@ class DurationValidator:
         duration = attrs.get(self.field)
         if duration and duration > 120:
             raise ValidationError(
-                f"Время выполнения привычки не должно превышать 120 секунд (2 минуты). Вы указали: {duration} [Валидаторы]."
+                f"Время выполнения привычки не должно превышать 120 секунд (2 минуты). "
+                f"Вы указали: {duration} [Валидаторы]."
             )
 
 
@@ -39,7 +41,8 @@ class OnlyPleasantHabitAsRelatedValidator:
         related_habit = attrs.get(self.field)
         if related_habit and not related_habit.is_pleasant:
             raise ValidationError(
-                "В качестве связанной привычки может быть выбрана только привычка с признаком приятной [Валидаторы]."
+                "В качестве связанной привычки может быть выбрана только привычка "
+                "с признаком приятной [Валидаторы]."
             )
 
 
@@ -71,5 +74,6 @@ class PeriodicityValidator:
         periodicity = attrs.get(self.field)
         if periodicity and periodicity > 7:
             raise ValidationError(
-                f"Нельзя выполнять привычку реже, чем 1 раз в 7 дней. Максимальный интервал — 7. Вы указали: {periodicity} [Валидаторы]."
+                f"Нельзя выполнять привычку реже, чем 1 раз в 7 дней. "
+                f"Максимальный интервал — 7. Вы указали: {periodicity} [Валидаторы]."
             )
