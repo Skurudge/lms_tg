@@ -34,7 +34,6 @@ jobs:
         run: |
           export SECRET_KEY="ci-cd-test-secret-key-placeholder"
           export DEBUG=True
-          # Переводим тесты на встроенную базу SQLite, чтобы не зависеть от Postgres
           export DB_ENGINE="django.db.backends.sqlite3"
           poetry run python manage.py test
 
@@ -74,8 +73,17 @@ jobs:
     needs: build_check
     if: github.event_name == 'push'
     steps:
-      - name: Проверка исходного кода для деплоя
-        uses: actions/checkout@v4
+      - name: Чистка старого мусора на удаленном сервере
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script: |
+            # Останавливаем старые контейнеры и полностью чистим папку
+            cd /app/lms_project 2>/dev/null && docker compose down -v || true
+            rm -rf /app/lms_project/*
+            mkdir -p /app/lms_project
 
       - name: Копирование файлов проекта на удаленный сервер
         uses: appleboy/scp-action@v0.1.7
@@ -99,12 +107,9 @@ jobs:
             echo "DB_USER=${{ secrets.DB_USER }}" >> .env
             echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
             
-            # Меняем локальный порт 8080 на серверный порт 80
             sed -i 's/"8080:80"/"80:80"/g' docker-compose.yml
             
             docker builder prune -f
             
-            # Принудительно очищаем старые зависшие диски СУБД на сервере
-            docker compose down -v
             docker compose up --build -d
             docker compose exec -T web python manage.py migrate
