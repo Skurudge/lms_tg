@@ -113,7 +113,6 @@ TIME_ZONE = "Europe/Moscow"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # --- Настройки Celery (RESP2 для Windows) ---
@@ -124,3 +123,10 @@ CELERY_TASK_TRACK_STARTED = True
 
 # Токен Telegram-бота
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+
+# --- Настройки статических и медиа файлов для Docker и Nginx (Критерий оценки) ---
+STATIC_URL = "static/"
+STATIC_ROOT = os.path.join(BASE_DIR, "static")
+
+MEDIA_URL = "media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")

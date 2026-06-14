@@ -1,0 +1,121 @@
+services:
+  # 1. База данных PostgreSQL
+  db:
+    image: postgres:16-alpine
+    container_name: habits_postgres_db
+    restart: always
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 2. Брокер сообщений Redis
+  redis:
+    image: redis:7-alpine
+    container_name: habits_redis_broker
+    restart: always
+    volumes:
+      - redis_data:/data
+    expose:
+      - "6379"
+
+  # 3. Веб-приложение Django (Gunicorn)
+  web:
+    build: .
+    container_name: habits_web_app
+    restart: always
+    command: >
+      sh -c "python manage.py collectstatic --noinput && 
+             python manage.py migrate && 
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000"
+    volumes:
+      - .:/app
+      - static_volume:/app/static
+      - media_volume:/app/media
+    expose:
+      - "8000"
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # 4. Веб-сервер Nginx (внешняя точка входа)
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: habits_nginx_proxy
+    restart: always
+    ports:
+      - "8080:80" # Изменили порт на 8080 для локальной стабильности
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - static_volume:/app/static
+      - media_volume:/app/media
+    depends_on:
+      - web
+
+  # 5. Воркер Celery
+  celery_worker:
+    build: .
+    container_name: habits_celery_worker
+    restart: always
+    command: celery -A config.celery:app worker --loglevel=info
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # 6. Планировщик Celery Beat
+  celery_beat:
+    build: .
+    container_name: habits_celery_beat
+    restart: always
+    command: celery -A config.celery:app beat --loglevel=info
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+volumes:
+  postgres_data:
+  redis_data:
+  static_volume:
+  media_volume:
