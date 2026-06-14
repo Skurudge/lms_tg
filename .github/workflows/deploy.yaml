@@ -34,6 +34,8 @@ jobs:
         run: |
           export SECRET_KEY="ci-cd-test-secret-key-placeholder"
           export DEBUG=True
+          # Переводим тесты на встроенную базу SQLite, чтобы не зависеть от Postgres
+          export DB_ENGINE="django.db.backends.sqlite3"
           poetry run python manage.py test
 
   # --- ЭТАП 2: ЛИНТИНГ И ПРОВЕРКА PEP 8 ---
