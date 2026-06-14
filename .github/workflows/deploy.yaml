@@ -73,19 +73,18 @@ jobs:
     needs: build_check
     if: github.event_name == 'push'
     steps:
-      - name: Чистка старого мусора на удаленном сервере
+      - name: Шаг 1. Чистка старого мусора на удаленном сервере
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
-            # Останавливаем старые контейнеры и полностью чистим папку
             cd /app/lms_project 2>/dev/null && docker compose down -v || true
             rm -rf /app/lms_project/*
             mkdir -p /app/lms_project
 
-      - name: Копирование файлов проекта на удаленный сервер
+      - name: Шаг 2. Копирование свежих файлов проекта на удаленный сервер
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -94,7 +93,7 @@ jobs:
           source: "."
           target: "/app/lms_project"
 
-      - name: Подключение по SSH, создание env-файла и запуск Docker
+      - name: Шаг 3. Подключение по SSH, создание env-файла и запуск Docker
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -107,6 +106,7 @@ jobs:
             echo "DB_USER=${{ secrets.DB_USER }}" >> .env
             echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
             
+            # Теперь файл физически на месте, и sed отработает без ошибок
             sed -i 's/"8080:80"/"80:80"/g' docker-compose.yml
             
             docker builder prune -f
