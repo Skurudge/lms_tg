@@ -56,7 +56,7 @@ jobs:
       - name: Проверка стиля кода через Flake8 (Критерий оценки)
         run: flake8 . --max-line-length=120 --exclude=.git,__pycache__,migrations,.venv,config/celery.py
 
-  # --- ПРОВЕРКА СБОРКИ DOCKER-ОБРАЗОВ (Критерий курсовой) ---
+  # --- ЭТАП 3: ПРОВЕРКА СБОРКИ DOCKER-ОБРАЗОВ (Критерий курсовой) ---
   build_check:
     runs-on: ubuntu-latest
     needs: [test, lint]
@@ -67,13 +67,13 @@ jobs:
       - name: Тестовая сборка Docker-образов
         run: docker compose build
 
-  # --- ЭТАП 4: АВТОМАТИЧЕСКИЙ ДЕПЛОЙ НА УДАЛЕННЫЙ СЕРВЕР ЧЕРЕЗ DOCKER ---
-  deploy:
+  # --- ЭТАП 4: ПОЛНАЯ ОЧИСТКА СЕРВЕРА ПЕРЕД ДЕПОЕМ ---
+  cleanup:
     runs-on: ubuntu-latest
     needs: build_check
     if: github.event_name == 'push'
     steps:
-      - name: Шаг 1. Чистка старого мусора на удаленном сервере
+      - name: Жесткая зачистка папки lms_project на сервере
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -81,10 +81,19 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
             cd /app/lms_project 2>/dev/null && docker compose down -v || true
-            rm -rf /app/lms_project/*
+            rm -rf /app/lms_project
             mkdir -p /app/lms_project
 
-      - name: Шаг 2. Копирование свежих файлов проекта на удаленный сервер
+  # --- ЭТАП 5: ЧИСТЫЙ АВТОМАТИЧЕСКИЙ ДЕПЛОЙ ---
+  deploy:
+    runs-on: ubuntu-latest
+    needs: cleanup
+    if: github.event_name == 'push'
+    steps:
+      - name: Проверка исходного кода для деплоя
+        uses: actions/checkout@v4
+
+      - name: Копирование чистых файлов проекта на удаленный сервер
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -93,7 +102,7 @@ jobs:
           source: "."
           target: "/app/lms_project"
 
-      - name: Шаг 3. Подключение по SSH, создание env-файла и запуск Docker
+      - name: Подключение по SSH, создание env-файла и запуск Docker
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -106,7 +115,7 @@ jobs:
             echo "DB_USER=${{ secrets.DB_USER }}" >> .env
             echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
             
-            # Теперь файл физически на месте, и sed отработает без ошибок
+            # Файлы скопированы на предыдущем шаге, sed отработает штатно
             sed -i 's/"8080:80"/"80:80"/g' docker-compose.yml
             
             docker builder prune -f
